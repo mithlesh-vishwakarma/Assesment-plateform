@@ -10,22 +10,29 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Load environment variables from .env if python-dotenv is available
+try:
+    from dotenv import load_dotenv
+    load_dotenv(BASE_DIR / '.env')
+except ImportError:
+    pass
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-)-&jd=!bir9hd#vin4f(98jo^9(vl$#4$hi$m18_(0t2l@84_9'
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-)-&jd=!bir9hd#vin4f(98jo^9(vl$#4$hi$m18_(0t2l@84_9')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [host.strip() for host in os.getenv('DJANGO_ALLOWED_HOSTS', '*').split(',') if host.strip()]
 
 
 # Application definition
@@ -39,6 +46,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # Third party apps
     'rest_framework',
+    'rest_framework.authtoken',
     'corsheaders',
     # Local apps
     'api',
@@ -134,3 +142,27 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Django REST Framework Configuration
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
+}
+
+# Secure Code Runner Settings (Judge0 / Mock isolated execution)
+CODE_EXECUTION = {
+    'ADAPTER': os.getenv('CODE_EXECUTION_ADAPTER', 'mock'),  # 'judge0' or 'mock'
+    'JUDGE0_URL': os.getenv('JUDGE0_URL', 'https://judge0-ce.p.rapidapi.com'),
+    'JUDGE0_API_KEY': os.getenv('JUDGE0_API_KEY', ''),
+    'JUDGE0_HOST': os.getenv('JUDGE0_HOST', 'judge0-ce.p.rapidapi.com'),
+    'DEFAULT_TIMEOUT_SECONDS': int(os.getenv('CODE_EXECUTION_TIMEOUT_SECONDS', '5')),
+    'DEFAULT_MEMORY_LIMIT_KB': int(os.getenv('CODE_EXECUTION_MEMORY_LIMIT_KB', '128000')),
+    'DEFAULT_MAX_RUN_QUOTA': int(os.getenv('CODE_EXECUTION_MAX_RUN_QUOTA', '20')),
+}
