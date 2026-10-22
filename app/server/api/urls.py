@@ -28,6 +28,9 @@ from .views import (
     admin_campaign_summary,
     admin_export_csv,
     admin_assign_reviewer,
+    candidate_stages,
+    admin_candidates_list,
+    admin_overview_metrics,
 )
 
 router = DefaultRouter()
@@ -55,6 +58,7 @@ urlpatterns = [
 
     # Candidate Progression & Attempt Lifecycles
     path('candidate/campaigns/', candidate_campaigns, name='candidate-campaigns'),
+    path('candidate/stages/', candidate_stages, name='candidate-stages'),
     path('candidate/status/<int:campaign_id>/', candidate_assessment_status, name='candidate-status'),
     path('candidate/stages/<int:stage_id>/start/', candidate_start_stage, name='candidate-start-stage'),
     path('candidate/stages/<int:stage_id>/questions/', candidate_stage_questions, name='candidate-stage-questions'),
@@ -69,6 +73,8 @@ urlpatterns = [
     path('reviewer/evaluations/<int:stage_attempt_id>/score/', reviewer_submit_scores, name='reviewer-submit-scores'),
 
     # Admin Operations & Reporting
+    path('admin/candidates/', admin_candidates_list, name='admin-candidates-list'),
+    path('admin/overview-metrics/', admin_overview_metrics, name='admin-overview-metrics'),
     path('admin/reports/campaign-summary/<int:campaign_id>/', admin_campaign_summary, name='admin-campaign-summary'),
     path('admin/reports/export-csv/<int:campaign_id>/', admin_export_csv, name='admin-export-csv'),
     path('admin/assign-reviewer/', admin_assign_reviewer, name='admin-assign-reviewer'),

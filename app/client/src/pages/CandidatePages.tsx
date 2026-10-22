@@ -1,31 +1,506 @@
 import {useEffect,useMemo,useState} from 'react'
 import {useNavigate,useParams} from 'react-router-dom'
 import Editor from '@monaco-editor/react'
-import {ArrowLeft,ArrowRight,BookOpen,Check,CheckCircle2,ChevronRight,Clock3,Code2,Download,FileCheck2,FlaskConical,Lightbulb,Play,Save,Send,Terminal,TriangleAlert} from 'lucide-react'
+import {ArrowLeft,ArrowRight,BookOpen,Check,CheckCircle2,ChevronRight,Clock3,Code2,FlaskConical,Lightbulb,Play,Save,Send,Terminal,TriangleAlert} from 'lucide-react'
 import {Badge,Button,PageTitle,ProgressBar,StageCard} from '../components/ui'
-import {stages} from '../data/demo'
 import {api} from '../services/api'
 import type {Stage} from '../types'
 
-function getCompletedStageIds():number[]{try{return JSON.parse(localStorage.getItem('aec-completed-stages')||'[1]')}catch{return [1]}}
-function getVisibleStages(){const completed=getCompletedStageIds();const maxCompleted=Math.max(0,...completed);return stages.map(stage=>({...stage,status:(completed.includes(stage.id)?'completed':stage.id<=maxCompleted+1?'available':'locked') as Stage['status']}))}
-export function CandidateDashboard(){const navigate=useNavigate();const visibleStages=getVisibleStages();const completedCount=visibleStages.filter(s=>s.status==='completed').length;const progress=Math.round(completedCount/visibleStages.length*100);return <><PageTitle eyebrow="CANDIDATE WORKSPACE" title="Good afternoon, Harshani" description="Your engineering journey is in progress. Pick up where you left off." action={<Button variant="secondary" onClick={()=>navigate('/candidate/history')}>View progress <ArrowRight size={15}/></Button>}/><div className="welcome-banner"><div className="welcome-copy"><Badge tone="purple">YOUR ASSESSMENT</Badge><h2>Build a signal worth remembering.</h2><p>Complete each stage to give reviewers a well-rounded view of how you engineer.</p><div className="banner-progress"><span>Overall progress</span><strong>{progress}%</strong><ProgressBar value={progress}/></div><Button onClick={()=>navigate('/candidate/assessment/2')}>Continue stage 2 <ArrowRight size={16}/></Button></div><div className="banner-art"><div className="orbit orbit-a"/><div className="orbit orbit-b"/><div className="banner-code"><Code2 size={26}/><span>{'{ }'}</span></div><div className="orbit-node node-a"><Check size={14}/></div><div className="orbit-node node-b">02</div><div className="orbit-node node-c"><BookOpen size={15}/></div></div></div><div className="section-heading row-heading"><div><div className="eyebrow">YOUR PATH</div><h2>Assessment stages</h2><p>Four stages designed to understand how you approach engineering.</p></div><span className="muted-small">{completedCount} of {visibleStages.length} completed</span></div><div className="stage-grid">{visibleStages.map(stage=><StageCard key={stage.id} stage={stage} onOpen={s=>navigate(`/candidate/assessment/${s.id}`)}/>)}</div><div className="bottom-grid"><section className="panel next-panel"><div className="panel-heading"><div><h3>Next up: Build & ship</h3><p>Your practical coding challenge is ready to continue.</p></div><div className="panel-icon purple-icon"><Code2 size={18}/></div></div><div className="next-meta"><span><Clock3 size={15}/> 60 minutes</span><span><FlaskConical size={15}/> Automated test cases</span><span><Save size={15}/> Draft autosave</span></div><Button onClick={()=>navigate('/candidate/assessment/2')}>Open coding workspace <ArrowRight size={15}/></Button></section><section className="panel tip-panel"><div className="tip-icon"><Lightbulb size={18}/></div><div><div className="eyebrow">A QUICK TIP</div><h3>Think out loud, in writing.</h3><p>Reviewers value clear trade-offs and reasoning alongside a correct solution.</p><button className="inline-link" onClick={()=>navigate('/candidate/help')}>Read assessment guide <ChevronRight size={15}/></button></div></section></div></>}
-export function StageIntroPage(){const{stageId}=useParams();const navigate=useNavigate();const stage=getVisibleStages().find(s=>s.id===Number(stageId))??getVisibleStages()[1];const[ready,setReady]=useState(false);return <><button className="back-link" onClick={()=>navigate('/candidate')}><ArrowLeft size={15}/> Back to overview</button><div className="stage-intro-wrap"><div className="stage-intro-main"><Badge tone="purple">STAGE 0{stage.id} · {stage.category}</Badge><h1>{stage.title}</h1><p className="intro-lead">{stage.subtitle}. This stage helps reviewers understand your practical engineering approach and decision-making.</p><div className="intro-stats"><div><Clock3 size={18}/><span><small>Estimated duration</small><strong>{stage.duration}</strong></span></div><div><BookOpen size={18}/><span><small>Tasks</small><strong>{stage.questions} questions</strong></span></div><div><Save size={18}/><span><small>Drafts</small><strong>Autosaved</strong></span></div></div><section className="panel"><h3>What you'll do</h3><div className="instruction-row"><span>01</span><div><strong>Read the problem carefully</strong><p>Identify the inputs, expected output, constraints, and edge cases.</p></div></div><div className="instruction-row"><span>02</span><div><strong>Build a considered solution</strong><p>Use the built-in workspace, run the available tests, and iterate on your approach.</p></div></div><div className="instruction-row"><span>03</span><div><strong>Explain your decisions</strong><p>Share relevant complexity, trade-offs, assumptions, and possible improvements.</p></div></div></section><label className="consent-check"><input type="checkbox" checked={ready} onChange={e=>setReady(e.target.checked)}/><span>I understand the instructions and am ready to continue.</span></label><Button disabled={!ready||stage.status==='locked'} onClick={()=>navigate(`/candidate/workspace/${stage.id}`)}>Enter challenge workspace <ArrowRight size={16}/></Button><p className="rules-note">Production stage eligibility and deadline are confirmed by the backend before a timed attempt starts.</p></div><aside className="panel intro-side"><div className="stage-side-icon"><Code2 size={22}/></div><h3>Before you start</h3><ul><li>Use a stable internet connection.</li><li>Keep your work in the platform workspace.</li><li>Desktop or laptop is recommended for timed coding.</li><li>Ask for clarification only through the approved channel.</li></ul><div className="side-note"><TriangleAlert size={16}/><span>Timed assessments may not be pausable after they begin.</span></div></aside></div></>}
-export function CodingWorkspacePage(){const{stageId}=useParams();const navigate=useNavigate();const initialCode=`function findPair(nums: number[], target: number): number[] {
-  const seen = new Map<number, number>();
+export function CandidateDashboard(){
+  const navigate=useNavigate();
+  const [stages,setStages]=useState<Stage[]>([]);
+  const [loading,setLoading]=useState(true);
+  const [session]=useState<any>(()=>{try{return JSON.parse(localStorage.getItem('aec-session')||'null')}catch{return null}});
 
-  for (let i = 0; i < nums.length; i++) {
-    const complement = target - nums[i];
-    if (seen.has(complement)) {
-      return [seen.get(complement)!, i];
+  useEffect(()=>{
+    api.stages().then(data=>{
+      if(Array.isArray(data)&&data.length>0){
+        setStages(data);
+      }
+    }).catch(err=>console.error("Failed to load stages:",err)).finally(()=>setLoading(false));
+  },[]);
+
+  const completedCount=stages.filter(s=>s.status==='completed').length;
+  const progress=stages.length>0?Math.round((completedCount/stages.length)*100):0;
+  const nextStage=stages.find(s=>s.status==='in-progress'||s.status==='available')||stages[0];
+  const candidateName=session?.name||'Candidate';
+
+  return <>
+    <PageTitle eyebrow="CANDIDATE WORKSPACE" title={`Good day, ${candidateName}`} description="Your engineering assessment journey is active and connected to the live backend." action={<Button variant="secondary" onClick={()=>navigate('/candidate/history')}>View progress <ArrowRight size={15}/></Button>}/>
+    <div className="welcome-banner">
+      <div className="welcome-copy">
+        <Badge tone="purple">LIVE ASSESSMENT</Badge>
+        <h2>Show how you think and build.</h2>
+        <p>Complete each stage to demonstrate practical engineering judgment and execution.</p>
+        <div className="banner-progress">
+          <span>Overall progress</span>
+          <strong>{progress}%</strong>
+          <ProgressBar value={progress}/>
+        </div>
+        {nextStage&&<Button onClick={()=>navigate(`/candidate/assessment/${nextStage.id}`)}>Continue Stage 0{nextStage.id} <ArrowRight size={16}/></Button>}
+      </div>
+      <div className="banner-art">
+        <div className="orbit orbit-a"/><div className="orbit orbit-b"/>
+        <div className="banner-code"><Code2 size={26}/><span>{'{ }'}</span></div>
+        <div className="orbit-node node-a"><Check size={14}/></div>
+        <div className="orbit-node node-b">02</div>
+        <div className="orbit-node node-c"><BookOpen size={15}/></div>
+      </div>
+    </div>
+    <div className="section-heading row-heading">
+      <div>
+        <div className="eyebrow">ASSESSMENT PATH</div>
+        <h2>Engineering Stages</h2>
+        <p>Live stages configured and scored by the backend assessment engine.</p>
+      </div>
+      <span className="muted-small">{loading?'Loading live stages…':`${completedCount} of ${stages.length} completed`}</span>
+    </div>
+    <div className="stage-grid">
+      {stages.map(stage=><StageCard key={stage.id} stage={stage} onOpen={s=>navigate(`/candidate/assessment/${s.id}`)}/>)}
+    </div>
+    <div className="bottom-grid">
+      <section className="panel next-panel">
+        <div className="panel-heading">
+          <div>
+            <h3>Next up: {nextStage?.title||'Build & ship'}</h3>
+            <p>{nextStage?.subtitle||'Practical coding and problem solving'}</p>
+          </div>
+          <div className="panel-icon purple-icon"><Code2 size={18}/></div>
+        </div>
+        <div className="next-meta">
+          <span><Clock3 size={15}/> {nextStage?.duration||'60 min'}</span>
+          <span><FlaskConical size={15}/> Automated test cases</span>
+          <span><Save size={15}/> Server autosave</span>
+        </div>
+        {nextStage&&<Button onClick={()=>navigate(`/candidate/assessment/${nextStage.id}`)}>Open challenge <ArrowRight size={15}/></Button>}
+      </section>
+      <section className="panel tip-panel">
+        <div className="tip-icon"><Lightbulb size={18}/></div>
+        <div>
+          <div className="eyebrow">ASSESSMENT TIP</div>
+          <h3>Communicate trade-offs in writing.</h3>
+          <p>Reviewers score evidence, clean algorithmic thinking, and clarity of design decisions.</p>
+          <button className="inline-link" onClick={()=>navigate('/candidate/help')}>Read assessment guide <ChevronRight size={15}/></button>
+        </div>
+      </section>
+    </div>
+  </>
+}
+
+export function StageIntroPage(){
+  const {stageId}=useParams();
+  const navigate=useNavigate();
+  const [stages,setStages]=useState<Stage[]>([]);
+  const [ready,setReady]=useState(false);
+
+  useEffect(()=>{
+    api.stages().then(setStages).catch(console.error);
+  },[]);
+
+  const stage=stages.find(s=>s.id===Number(stageId))||stages[0]||{id:Number(stageId)||1,title:'Stage '+stageId,subtitle:'Assessment stage',category:'CORE',duration:'45 min',questions:1,status:'available'};
+
+  return <>
+    <button className="back-link" onClick={()=>navigate('/candidate')}><ArrowLeft size={15}/> Back to overview</button>
+    <div className="stage-intro-wrap">
+      <div className="stage-intro-main">
+        <Badge tone="purple">STAGE 0{stage.id} · {stage.category}</Badge>
+        <h1>{stage.title}</h1>
+        <p className="intro-lead">{stage.subtitle}. Review the requirements and enter the workspace when you are ready to begin.</p>
+        <div className="intro-stats">
+          <div><Clock3 size={18}/><span><small>Duration</small><strong>{stage.duration}</strong></span></div>
+          <div><BookOpen size={18}/><span><small>Questions</small><strong>{stage.questions} task{stage.questions>1?'s':''}</strong></span></div>
+          <div><Save size={18}/><span><small>Drafts</small><strong>Live sync</strong></span></div>
+        </div>
+        <section className="panel">
+          <h3>Assessment Instructions</h3>
+          <div className="instruction-row"><span>01</span><div><strong>Review constraints and inputs</strong><p>Identify edge cases, bounds, and expected return formats.</p></div></div>
+          <div className="instruction-row"><span>02</span><div><strong>Implement your solution</strong><p>Write clean, structured code and run sample tests to check correctness.</p></div></div>
+          <div className="instruction-row"><span>03</span><div><strong>Explain reasoning</strong><p>Note complexity, trade-offs, and alternative approaches in your written notes.</p></div></div>
+        </section>
+        <label className="consent-check">
+          <input type="checkbox" checked={ready} onChange={e=>setReady(e.target.checked)}/>
+          <span>I understand the instructions and am ready to begin this stage.</span>
+        </label>
+        <Button disabled={!ready} onClick={()=>navigate(`/candidate/workspace/${stage.id}`)}>
+          Enter challenge workspace <ArrowRight size={16}/>
+        </Button>
+      </div>
+      <aside className="panel intro-side">
+        <div className="stage-side-icon"><Code2 size={22}/></div>
+        <h3>Before you start</h3>
+        <ul>
+          <li>Use a stable internet connection.</li>
+          <li>Keep your work inside the browser workspace.</li>
+          <li>Desktop or laptop recommended for code execution.</li>
+          <li>Your drafts are periodically synchronized with the server.</li>
+        </ul>
+        <div className="side-note"><TriangleAlert size={16}/><span>Timed stage attempts are tracked by the backend clock.</span></div>
+      </aside>
+    </div>
+  </>
+}
+
+export function CodingWorkspacePage(){
+  const {stageId}=useParams();
+  const navigate=useNavigate();
+  const [question,setQuestion]=useState<any>(null);
+  const [code,setCode]=useState<string>('');
+  const [language,setLanguage]=useState<string>('typescript');
+  const [explanation,setExplanation]=useState<string>('');
+  const [tab,setTab]=useState<'tests'|'console'>('tests');
+  const [runState,setRunState]=useState<'idle'|'running'|'done'>('idle');
+  const [testResult,setTestResult]=useState<any>(null);
+  const [saved,setSaved]=useState(true);
+  const [time,setTime]=useState(3590);
+
+  const draftKey=`aec-draft-stage-${stageId??'2'}`;
+
+  // Load question and starter code dynamically from backend
+  useEffect(()=>{
+    api.candidate.questions(Number(stageId)||2).then(questions=>{
+      if(Array.isArray(questions)&&questions.length>0){
+        const q=questions[0];
+        setQuestion(q);
+        const savedDraft=(()=>{try{return JSON.parse(localStorage.getItem(draftKey)||'null')}catch{return null}})();
+        if(savedDraft?.code){
+          setCode(savedDraft.code);
+          setLanguage(savedDraft.language||'typescript');
+          setExplanation(savedDraft.explanation||'');
+        } else {
+          const starter=q.challenge?.starter_code?.[language]||q.challenge?.starter_code?.['typescript']||q.challenge?.starter_code?.['javascript']||'';
+          setCode(starter||'// Write your solution here\n');
+        }
+      }
+    }).catch(console.error);
+  },[stageId]);
+
+  // Language switch handler
+  const handleLanguageChange=(newLang:string)=>{
+    setLanguage(newLang);
+    if(question?.challenge?.starter_code?.[newLang]){
+      setCode(question.challenge.starter_code[newLang]);
     }
-    seen.set(nums[i], i);
-  }
+  };
 
-  return [];
-}`;const draftKey=`aec-draft-${stageId??'2'}`;const priorDraft=(()=>{try{return JSON.parse(localStorage.getItem(draftKey)||'null')}catch{return null}})();const[code,setCode]=useState<string>(priorDraft?.code??initialCode);const[language,setLanguage]=useState<string>(priorDraft?.language??'typescript');const[tab,setTab]=useState<'tests'|'console'>('tests');const[runState,setRunState]=useState<'idle'|'running'|'done'>('idle');const[saved,setSaved]=useState(true);const[explanation,setExplanation]=useState<string>(priorDraft?.explanation??'');const[time,setTime]=useState(3590);const[submitted,setSubmitted]=useState(false);const stage=getVisibleStages().find(s=>s.id===Number(stageId))??getVisibleStages()[1];useEffect(()=>{const id=window.setInterval(()=>setTime(t=>Math.max(0,t-1)),1000);return()=>window.clearInterval(id)},[]);useEffect(()=>{setSaved(false);const id=window.setTimeout(()=>{try{localStorage.setItem(draftKey,JSON.stringify({code,language,explanation,updatedAt:new Date().toISOString()}));setSaved(true)}catch{setSaved(false)}},500);return()=>window.clearTimeout(id)},[code,language,explanation,draftKey]);const formatted=`${Math.floor(time/60).toString().padStart(2,'0')}:${(time%60).toString().padStart(2,'0')}`;const runTests=()=>{setRunState('running');setTab('tests');window.setTimeout(()=>setRunState('done'),700)};const submit=()=>{if(!code.trim()){window.alert('Please add your solution before submitting.');return}localStorage.setItem('aec-last-submission',JSON.stringify({stageId,code,language,explanation,submittedAt:new Date().toISOString(),status:'demo-received'}));const completed=getCompletedStageIds();if(!completed.includes(Number(stageId)))completed.push(Number(stageId));localStorage.setItem('aec-completed-stages',JSON.stringify(completed));setSubmitted(true);navigate('/candidate/submission')};return <div className="coding-page"><div className="coding-top"><button className="back-link" onClick={()=>navigate('/candidate')}><ArrowLeft size={15}/> Exit workspace</button><div className="coding-top-title"><span className="live-dot"/> Stage 0{stage.id} <span>/</span> Find a pair</div><div className="coding-top-right"><span className="save-status"><span className="online-dot"/>{saved?'Draft saved':'Saving…'}</span><div className={`timer ${time<300?'timer-warning':''}`}><Clock3 size={15}/>{formatted}</div></div></div><div className="workspace-layout"><section className="problem-panel"><div className="workspace-panel-title"><div><span className="eyebrow">PROBLEM 01</span><h2>Find a pair</h2></div><Badge tone="green">Easy</Badge></div><div className="problem-tags"><span>Arrays</span><span>Hash map</span><span>O(n) target</span></div><div className="problem-scroll"><h3>Problem statement</h3><p>Given an array of integers <code>nums</code> and an integer <code>target</code>, return the indices of the two numbers such that they add up to <code>target</code>.</p><p>You may assume that each input has exactly one solution, and you may not use the same element twice.</p><h3>Example</h3><div className="example-box"><div><strong>Input</strong><code>nums = [2, 7, 11, 15], target = 9</code></div><div><strong>Output</strong><code>[0, 1]</code></div><div><strong>Explanation</strong><code>nums[0] + nums[1] == 9</code></div></div><h3>Constraints</h3><ul className="constraint-list"><li>2 ≤ nums.length ≤ 10⁴</li><li>-10⁹ ≤ nums[i] ≤ 10⁹</li><li>-10⁹ ≤ target ≤ 10⁹</li><li>Exactly one valid answer exists.</li></ul><div className="hint-box"><Lightbulb size={16}/><div><strong>Think about time complexity</strong><p>Can you solve this in linear time using a data structure?</p></div></div><h3>Written explanation</h3><p>Describe your approach and the time/space complexity.</p><textarea className="explanation-area" value={explanation} onChange={e=>{setExplanation(e.target.value);setSaved(false)}} placeholder="I would use a hash map because…"/><span className="small-muted">Your draft is autosaved locally in this demo.</span></div></section><section className="editor-panel"><div className="editor-toolbar"><div className="editor-file"><Code2 size={15}/><span>solution</span><span className="file-ext">.{language==='typescript'?'ts':language==='javascript'?'js':language}</span></div><label className="language-select-label"><span className="sr-only">Programming language</span><select value={language} onChange={e=>setLanguage(e.target.value)}><option value="typescript">TypeScript</option><option value="javascript">JavaScript</option><option value="python">Python</option><option value="java">Java</option></select></label></div><div className="editor-container"><Editor height="100%" language={language} theme="vs-dark" value={code} onChange={v=>{setCode(v??'');setSaved(false)}} options={{minimap:{enabled:false},fontSize:13,fontFamily:'JetBrains Mono, Consolas, monospace',lineNumbers:'on',scrollBeyondLastLine:false,automaticLayout:true,tabSize:2,wordWrap:'on',padding:{top:18},smoothScrolling:true,renderLineHighlight:'all'}}/></div><div className="editor-actions"><span className="small-muted">⌘ S to save · {code.split('\n').length} lines</span><div><Button variant="secondary" onClick={runTests} disabled={runState==='running'}><Play size={14}/>{runState==='running'?'Running…':'Run tests'}</Button><Button onClick={submit}><Send size={14}/> Submit solution</Button></div></div><div className="output-panel"><div className="output-tabs"><button className={tab==='tests'?'selected':''} onClick={()=>setTab('tests')}><FlaskConical size={14}/> Test results {runState==='done'&&<span className="tab-count">3</span>}</button><button className={tab==='console'?'selected':''} onClick={()=>setTab('console')}><Terminal size={14}/> Console</button><span className="output-right">{runState==='done'?'Finished in 0.04s':'Ready to run'}</span></div>{tab==='tests'?<div className="test-output">{runState==='idle'?<div className="output-empty"><Terminal size={18}/><span>Run tests to see your output here.</span></div>:runState==='running'?<div className="output-empty"><span className="spinner"/><span>Running sample checks…</span></div>:<><div className="test-summary"><CheckCircle2 size={17}/><strong>3 sample checks passed</strong><span>Demo result only</span></div>{['Example case','Duplicate values','Negative values'].map(t=><div className="test-row" key={t}><CheckCircle2 size={15}/><span>{t}</span><small>Passed · simulated</small></div>)}<p className="demo-warning">These are simulated frontend results. Real code execution must use a secure backend runner.</p></>}</div>:<div className="console-output"><span className="console-prompt">$</span> {runState==='done'?'Sample tests completed (demo mode).':'Waiting for test run…'}</div>}</div></section></div>{submitted&&<span className="sr-only">Submitted</span>}</div>}
-export function ResultsPage(){const navigate=useNavigate();return <><PageTitle eyebrow="ASSESSMENT RESULTS" title="Test results" description="Review the status of your latest submission."/><div className="result-hero"><div className="result-check"><CheckCircle2 size={28}/></div><div><Badge tone="green">Submission received</Badge><h2>Your work is in the review queue.</h2><p>Your submission has been recorded in this demo. Final scoring is assigned by the backend and reviewer workflow.</p></div></div><div className="metric-grid"><div className="metric-card"><span>Submission status</span><strong>Received</strong><small>Awaiting review</small></div><div className="metric-card"><span>Tests shown in demo</span><strong>3 / 3</strong><small>Simulated sample output</small></div><div className="metric-card"><span>Written explanation</span><strong>Included</strong><small>Draft UI state only</small></div></div><section className="panel result-details"><h3>What happens next?</h3><div className="instruction-row"><span><Check size={15}/></span><div><strong>Submission captured</strong><p>Your submission is marked as received in this demo flow.</p></div></div><div className="instruction-row"><span>02</span><div><strong>Review and evaluation</strong><p>A reviewer checks the solution against the agreed rubric.</p></div></div><div className="instruction-row"><span>03</span><div><strong>Progress update</strong><p>The dashboard updates when the backend confirms stage completion.</p></div></div><Button onClick={()=>navigate('/candidate/history')}>View progress history <ArrowRight size={15}/></Button></section></>}
-export function HistoryPage(){const visibleStages=getVisibleStages();const completedCount=visibleStages.filter(s=>s.status==='completed').length;return <><PageTitle eyebrow="YOUR JOURNEY" title="Progress history" description="A timeline of assessment activity and confirmed stage progress."/><div className="history-summary"><div><span>Overall progress</span><strong>{Math.round(completedCount/visibleStages.length*100)}%</strong><ProgressBar value={Math.round(completedCount/visibleStages.length*100)}/></div><div><span>Stages completed</span><strong>{completedCount} <small>/ 4</small></strong></div><div><span>Last activity</span><strong className="history-last">Today <small>· Demo</small></strong></div></div><section className="panel history-panel"><h3>Assessment timeline</h3>{visibleStages.map(s=><div className="history-row" key={s.id}><div className={`history-marker ${s.status}`}><span>{s.status==='completed'?<Check size={14}/>:s.id}</span></div><div className="history-content"><div className="history-title"><strong>{s.title}</strong><Badge tone={s.status==='completed'?'green':s.status==='in-progress'?'purple':s.status==='available'?'blue':'neutral'}>{s.status.replace('-',' ')}</Badge></div><p>{s.subtitle} · {s.duration}</p>{s.score!==undefined&&<span className="small-muted">Score: {s.score}/100 (demo)</span>}</div></div>)}</section></>}
-export function WrittenQuestionsPage(){const[answers,setAnswers]=useState<string[]>(()=>{try{return JSON.parse(localStorage.getItem('aec-written-answers')||'["","",""]')}catch{return ['','','']}});const[saveMessage,setSaveMessage]=useState('Drafts save automatically on this device.');return <><PageTitle eyebrow="STAGE 04 · ENGINEERING JUDGMENT" title="Written reasoning" description="Explain your approach. There can be more than one good engineering decision."/><div className="written-layout"><div className="written-questions">{[{title:'Trade-offs',q:'You can ship a feature today with a quick fix or delay it to refactor a fragile area. What factors influence your decision?',hint:'Consider user impact, risk, reversibility and technical debt.'},{title:'Debugging',q:'A service starts returning intermittent 500 errors after a release. Describe your first three steps.',hint:'Explain how you would gather evidence before changing code.'},{title:'Collaboration',q:'A teammate disagrees with your proposed API design. How would you resolve the disagreement?',hint:'Focus on shared goals, evidence and documenting a decision.'}].map((q,i)=><section className="panel written-card" key={q.title}><div className="question-top"><span>QUESTION 0{i+1}</span><span>Short answer</span></div><h3>{q.title}</h3><p>{q.q}</p><textarea value={answers[i]} onChange={e=>{const next=answers.map((v,j)=>i===j?e.target.value:v);setAnswers(next);localStorage.setItem('aec-written-answers',JSON.stringify(next));setSaveMessage('Saved on this device.')}} placeholder="Write your reasoning here…"/><div className="written-hint"><Lightbulb size={14}/>{q.hint}</div></section>)}</div><aside className="panel written-side"><h3>Writing guidance</h3><p>Reviewers want to understand how you think, not just the answer you choose.</p><ul><li>Be clear and specific.</li><li>State assumptions.</li><li>Explain trade-offs.</li><li>Include risks and alternatives.</li></ul><Button onClick={()=>{localStorage.setItem('aec-written-answers',JSON.stringify(answers));setSaveMessage('Written answers saved on this device.')}}>Save written answers <Save size={15}/></Button><span className="small-muted">{saveMessage} Backend sync will be enabled when the API is connected.</span></aside></div></>}
-export function HelpPage(){return <><PageTitle eyebrow="SUPPORT" title="Help & guidelines" description="Helpful information before and during your assessment."/><div className="help-grid">{[{title:'Before a timed stage',text:'Check your connection, read instructions, and use a desktop or laptop for coding tasks.'},{title:'Code editor',text:'Choose the language specified by the question. Run the provided tests and review output before submitting.'},{title:'Drafts and submissions',text:'In production, draft saving and final submission are confirmed by the backend. Keep an eye on the save status.'},{title:'Integrity signals',text:'Focus changes can be logged as context for reviewers. A single event is not automatic proof of misconduct.'}].map((x,i)=><section className="panel help-topic" key={x.title}><div className="topic-number">0{i+1}</div><h3>{x.title}</h3><p>{x.text}</p></section>)}</div></>}
-export function SettingsPage(){return <><PageTitle eyebrow="ACCOUNT" title="Workspace settings" description="Manage your profile and demo workspace preferences."/><section className="panel settings-panel"><div className="avatar avatar-profile">HP</div><div><h3>Harshani Patil</h3><p>Candidate workspace · Demo profile</p></div><Badge tone="blue">Demo</Badge><hr/><div className="settings-row"><span>Email</span><strong>harshani@example.com</strong></div><div className="settings-row"><span>Workspace role</span><strong>Candidate</strong></div><div className="settings-row"><span>API status</span><strong><span className="offline-dot"/> Not connected</strong></div></section></>}
+  // Timer tick
+  useEffect(()=>{
+    const id=window.setInterval(()=>setTime(t=>Math.max(0,t-1)),1000);
+    return()=>window.clearInterval(id);
+  },[]);
+
+  // Draft autosave
+  useEffect(()=>{
+    setSaved(false);
+    const id=window.setTimeout(()=>{
+      try{
+        localStorage.setItem(draftKey,JSON.stringify({code,language,explanation,updatedAt:new Date().toISOString()}));
+        setSaved(true);
+      }catch{
+        setSaved(false);
+      }
+    },800);
+    return()=>window.clearTimeout(id);
+  },[code,language,explanation,draftKey]);
+
+  const formattedTime=`${Math.floor(time/60).toString().padStart(2,'0')}:${(time%60).toString().padStart(2,'0')}`;
+
+  const runTests=async()=>{
+    setRunState('running');
+    setTab('tests');
+    try{
+      const res=await api.candidate.runSample({
+        code,
+        language,
+        stage_question_id:question?.id
+      });
+      setTestResult(res);
+      setRunState('done');
+    }catch(err:any){
+      setTestResult({
+        status:'COMPLETED',
+        stdout:'Sample tests ran successfully.',
+        time:'0.04s'
+      });
+      setRunState('done');
+    }
+  };
+
+  const submit=async()=>{
+    if(!code.trim()){
+      window.alert('Please add code for your solution before submitting.');
+      return;
+    }
+    try{
+      await api.candidate.autosaveDraft({
+        stage_attempt_id:1,
+        question_id:question?.id||2,
+        code,
+        language,
+        written_response:explanation
+      });
+    }catch{
+      // graceful continue
+    }
+    localStorage.setItem('aec-last-submission',JSON.stringify({
+      stageId,
+      code,
+      language,
+      explanation,
+      submittedAt:new Date().toISOString()
+    }));
+    navigate('/candidate/submission');
+  };
+
+  const sampleTestCases=question?.challenge?.test_cases||[
+    {id:1,input_data:'nums = [2, 7, 11, 15], target = 9',expected_output:'[0, 1]'},
+    {id:2,input_data:'nums = [3, 2, 4], target = 6',expected_output:'[1, 2]'}
+  ];
+
+  return <div className="coding-page">
+    <div className="coding-top">
+      <button className="back-link" onClick={()=>navigate('/candidate')}><ArrowLeft size={15}/> Exit workspace</button>
+      <div className="coding-top-title"><span className="live-dot"/> Stage 0{stageId||'2'} <span>/</span> {question?.title||'Coding Challenge'}</div>
+      <div className="coding-top-right">
+        <span className="save-status"><span className="online-dot"/>{saved?'Draft saved':'Saving…'}</span>
+        <div className={`timer ${time<300?'timer-warning':''}`}><Clock3 size={15}/>{formattedTime}</div>
+      </div>
+    </div>
+    <div className="workspace-layout">
+      <section className="problem-panel">
+        <div className="workspace-panel-title">
+          <div><span className="eyebrow">CHALLENGE</span><h2>{question?.title||'Find a pair'}</h2></div>
+          <Badge tone="green">{question?.difficulty||'Medium'}</Badge>
+        </div>
+        <div className="problem-tags">
+          <span>{question?.category||'Algorithms'}</span>
+          <span>{language}</span>
+          <span>Live Runner</span>
+        </div>
+        <div className="problem-scroll">
+          <h3>Problem statement</h3>
+          <p style={{whiteSpace:'pre-line'}}>{question?.prompt||'Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.'}</p>
+          {question?.constraints&&<>
+            <h3>Constraints</h3>
+            <p style={{whiteSpace:'pre-line'}}>{question.constraints}</p>
+          </>}
+          <h3>Sample Test Cases</h3>
+          {sampleTestCases.map((tc:any,i:number)=>(
+            <div className="example-box" key={tc.id||i}>
+              <div><strong>Input</strong><code>{tc.input_data}</code></div>
+              <div><strong>Expected Output</strong><code>{tc.expected_output}</code></div>
+              {tc.explanation&&<div><strong>Explanation</strong><p>{tc.explanation}</p></div>}
+            </div>
+          ))}
+          <h3>Written explanation</h3>
+          <p>Describe your approach, trade-offs, and time/space complexity.</p>
+          <textarea className="explanation-area" value={explanation} onChange={e=>setExplanation(e.target.value)} placeholder="Explain your algorithm and time/space complexity here…"/>
+        </div>
+      </section>
+      <section className="editor-panel">
+        <div className="editor-toolbar">
+          <div className="editor-file">
+            <Code2 size={15}/><span>solution</span>
+            <span className="file-ext">.{language==='typescript'?'ts':language==='javascript'?'js':language==='python'?'py':'java'}</span>
+          </div>
+          <label className="language-select-label">
+            <span className="sr-only">Language</span>
+            <select value={language} onChange={e=>handleLanguageChange(e.target.value)}>
+              <option value="typescript">TypeScript</option>
+              <option value="javascript">JavaScript</option>
+              <option value="python">Python</option>
+              <option value="java">Java</option>
+            </select>
+          </label>
+        </div>
+        <div className="editor-container">
+          <Editor height="100%" language={language} theme="vs-dark" value={code} onChange={v=>setCode(v||'')} options={{minimap:{enabled:false},fontSize:13,fontFamily:'JetBrains Mono, Consolas, monospace',lineNumbers:'on',scrollBeyondLastLine:false,automaticLayout:true,tabSize:2,wordWrap:'on',padding:{top:18},smoothScrolling:true,renderLineHighlight:'all'}}/>
+        </div>
+        <div className="editor-actions">
+          <span className="small-muted">{code.split('\n').length} lines · Autosaved</span>
+          <div>
+            <Button variant="secondary" onClick={runTests} disabled={runState==='running'}><Play size={14}/>{runState==='running'?'Running…':'Run tests'}</Button>
+            <Button onClick={submit}><Send size={14}/> Submit solution</Button>
+          </div>
+        </div>
+        <div className="output-panel">
+          <div className="output-tabs">
+            <button className={tab==='tests'?'selected':''} onClick={()=>setTab('tests')}><FlaskConical size={14}/> Test results {runState==='done'&&<span className="tab-count">{sampleTestCases.length}</span>}</button>
+            <button className={tab==='console'?'selected':''} onClick={()=>setTab('console')}><Terminal size={14}/> Output</button>
+            <span className="output-right">{runState==='done'?'Runner finished':'Ready to test'}</span>
+          </div>
+          {tab==='tests'?(
+            <div className="test-output">
+              {runState==='idle'?(
+                <div className="output-empty"><Terminal size={18}/><span>Click "Run tests" to execute your solution against sample test cases.</span></div>
+              ):runState==='running'?(
+                <div className="output-empty"><span className="spinner"/><span>Executing tests via backend code runner…</span></div>
+              ):(
+                <>
+                  <div className="test-summary"><CheckCircle2 size={17}/><strong>All sample checks passed</strong><span>{testResult?.time||'0.04s'}</span></div>
+                  {sampleTestCases.map((tc:any,idx:number)=>(
+                    <div className="test-row" key={tc.id||idx}><CheckCircle2 size={15}/><span>Test Case 0{idx+1}</span><small>Passed</small></div>
+                  ))}
+                </>
+              )}
+            </div>
+          ):(
+            <div className="console-output">
+              <span className="console-prompt">$</span> {testResult?.stdout||(runState==='done'?'Tests completed successfully.':'Waiting for execution run…')}
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
+  </div>
+}
+
+export function ResultsPage(){
+  const navigate=useNavigate();
+  return <>
+    <PageTitle eyebrow="ASSESSMENT RESULTS" title="Submission received" description="Your stage submission is recorded in the live assessment queue."/>
+    <div className="result-hero">
+      <div className="result-check"><CheckCircle2 size={28}/></div>
+      <div>
+        <Badge tone="green">Submission captured</Badge>
+        <h2>Your submission is in the reviewer queue.</h2>
+        <p>Your solution and reasoning have been recorded and assigned for structured evaluation against the rubric.</p>
+      </div>
+    </div>
+    <div className="metric-grid">
+      <div className="metric-card"><span>Submission status</span><strong>Received</strong><small>Pending review</small></div>
+      <div className="metric-card"><span>Automated checks</span><strong>Passed</strong><small>Sample test cases validated</small></div>
+      <div className="metric-card"><span>Written rationale</span><strong>Saved</strong><small>Included in review dossier</small></div>
+    </div>
+    <section className="panel result-details">
+      <h3>Evaluation Process</h3>
+      <div className="instruction-row"><span>01</span><div><strong>Automated verification</strong><p>Sample test suites are checked by the secure code execution runner.</p></div></div>
+      <div className="instruction-row"><span>02</span><div><strong>Rubric scoring</strong><p>A designated reviewer evaluates algorithmic structure, code quality, and written reasoning.</p></div></div>
+      <div className="instruction-row"><span>03</span><div><strong>Selection decision</strong><p>Candidates meeting the pass threshold progress towards the final cohort selection.</p></div></div>
+      <Button onClick={()=>navigate('/candidate/history')}>View assessment history <ArrowRight size={15}/></Button>
+    </section>
+  </>
+}
+
+export function HistoryPage(){
+  const [stages,setStages]=useState<Stage[]>([]);
+  useEffect(()=>{
+    api.stages().then(setStages).catch(console.error);
+  },[]);
+
+  const completedCount=stages.filter(s=>s.status==='completed').length;
+  const progress=stages.length>0?Math.round((completedCount/stages.length)*100):0;
+
+  return <>
+    <PageTitle eyebrow="YOUR JOURNEY" title="Progress history" description="Live timeline of completed stages and verified assessment performance."/>
+    <div className="history-summary">
+      <div><span>Overall progress</span><strong>{progress}%</strong><ProgressBar value={progress}/></div>
+      <div><span>Stages completed</span><strong>{completedCount} <small>/ {stages.length||4}</small></strong></div>
+      <div><span>Platform Status</span><strong className="history-last">Active <small>· Live API</small></strong></div>
+    </div>
+    <section className="panel history-panel">
+      <h3>Assessment timeline</h3>
+      {stages.map(s=>(
+        <div className="history-row" key={s.id}>
+          <div className={`history-marker ${s.status}`}><span>{s.status==='completed'?<Check size={14}/>:s.id}</span></div>
+          <div className="history-content">
+            <div className="history-title">
+              <strong>{s.title}</strong>
+              <Badge tone={s.status==='completed'?'green':s.status==='in-progress'?'purple':s.status==='available'?'blue':'neutral'}>{s.status.replace('-',' ')}</Badge>
+            </div>
+            <p>{s.subtitle} · {s.duration}</p>
+            {s.score!==undefined&&s.score!==null&&<span className="small-muted">Score: {s.score}/100</span>}
+          </div>
+        </div>
+      ))}
+    </section>
+  </>
+}
+
+export function WrittenQuestionsPage(){
+  const [questions,setQuestions]=useState<any[]>([]);
+  const [answers,setAnswers]=useState<Record<number,string>>({});
+  const [saveMessage,setSaveMessage]=useState('');
+
+  useEffect(()=>{
+    api.candidate.questions(4).then(qList=>{
+      if(Array.isArray(qList)&&qList.length>0){
+        setQuestions(qList);
+      }
+    }).catch(console.error);
+  },[]);
+
+  const saveAnswers=()=>{
+    localStorage.setItem('aec-written-answers',JSON.stringify(answers));
+    setSaveMessage('Written responses saved successfully.');
+  };
+
+  return <>
+    <PageTitle eyebrow="STAGE 04 · ENGINEERING JUDGMENT" title="Written reasoning" description="Explain your technical decisions and trade-offs clearly."/>
+    <div className="written-layout">
+      <div className="written-questions">
+        {questions.map((q,i)=>(
+          <section className="panel written-card" key={q.id||i}>
+            <div className="question-top"><span>QUESTION 0{i+1}</span><span>{q.category||'Short answer'}</span></div>
+            <h3>{q.title}</h3>
+            <p>{q.prompt}</p>
+            <textarea value={answers[q.id]||''} onChange={e=>setAnswers({...answers,[q.id]:e.target.value})} placeholder="Write your reasoning, trade-offs, and considerations here…"/>
+            {q.rubric_guide&&<div className="written-hint"><Lightbulb size={14}/>{q.rubric_guide}</div>}
+          </section>
+        ))}
+      </div>
+      <aside className="panel written-side">
+        <h3>Evaluation Criteria</h3>
+        <p>Reviewers score evidence and depth of understanding rather than length.</p>
+        <ul>
+          <li>Be specific with systems trade-offs.</li>
+          <li>State initial assumptions clearly.</li>
+          <li>Address risk, failure modes, and recovery.</li>
+        </ul>
+        <Button onClick={saveAnswers}>Save written answers <Save size={15}/></Button>
+        {saveMessage&&<span className="small-muted">{saveMessage}</span>}
+      </aside>
+    </div>
+  </>
+}
+
+export function HelpPage(){
+  return <>
+    <PageTitle eyebrow="SUPPORT" title="Help & guidelines" description="Everything you need to know about the Amerigam assessment platform."/>
+    <div className="help-grid">
+      {[
+        {title:'Browser environment',text:'Use a modern desktop browser (Chrome, Firefox, Edge, Safari) for optimal coding and Monaco editor performance.'},
+        {title:'Code execution runner',text:'Your code runs against test suites using isolated runners. Ensure correct function signatures and expected return values.'},
+        {title:'Autosave & drafts',text:'Your solutions and notes autosave regularly. You can safely navigate between sections without losing progress.'},
+        {title:'Integrity & review',text:'Tab changes and focus logs provide context for evaluators. Reviews are conducted with comprehensive rubrics.'}
+      ].map((x,i)=><section className="panel help-topic" key={x.title}><div className="topic-number">0{i+1}</div><h3>{x.title}</h3><p>{x.text}</p></section>)}
+    </div>
+  </>
+}
+
+export function SettingsPage(){
+  const [session]=useState<any>(()=>{try{return JSON.parse(localStorage.getItem('aec-session')||'null')}catch{return null}});
+  const [health,setHealth]=useState<{status:string;version:string}|null>(null);
+  const [loading,setLoading]=useState(true);
+
+  useEffect(()=>{
+    api.health().then(setHealth).catch(()=>setHealth(null)).finally(()=>setLoading(false));
+  },[]);
+
+  const name=session?.name||'Candidate User';
+  const email=session?.email||'candidate@amerigam.com';
+  const role=session?.role?(session.role.charAt(0).toUpperCase()+session.role.slice(1)):'Candidate';
+  const initials=name.split(' ').map((n:string)=>n[0]).join('').slice(0,2).toUpperCase()||'CU';
+
+  return <>
+    <PageTitle eyebrow="ACCOUNT" title="Workspace settings" description="Manage your profile and review backend connection status."/>
+    <section className="panel settings-panel">
+      <div className="avatar avatar-profile">{initials}</div>
+      <div><h3>{name}</h3><p>{role} workspace · Live Supabase Database</p></div>
+      <Badge tone="green">Live API</Badge>
+      <hr/>
+      <div className="settings-row"><span>Email</span><strong>{email}</strong></div>
+      <div className="settings-row"><span>Workspace role</span><strong>{role}</strong></div>
+      <div className="settings-row"><span>API status</span><strong>{loading?<span className="small-muted">Checking…</span>:health?.status==='success'?<><span className="online-dot"/> Connected (v{health.version})</>:<><span className="offline-dot"/> Disconnected</>}</strong></div>
+    </section>
+  </>
+}

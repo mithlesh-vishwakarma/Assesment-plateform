@@ -66,15 +66,16 @@ class UserDetailSerializer(serializers.ModelSerializer):
 
 
 class RegisterSerializer(serializers.Serializer):
-    username = serializers.CharField(max_length=150)
+    username = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    name = serializers.CharField(required=False, allow_blank=True)
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True, min_length=8)
-    role = serializers.ChoiceField(choices=UserRole.choices, default=UserRole.CANDIDATE)
+    role = serializers.ChoiceField(choices=UserRole.choices, default=UserRole.CANDIDATE, required=False)
     technical_track = serializers.CharField(required=False, default='fullstack')
     years_of_experience = serializers.FloatField(required=False, default=0.0)
 
     def validate_username(self, value):
-        if User.objects.filter(username=value).exists():
+        if value and User.objects.filter(username=value).exists():
             raise serializers.ValidationError("Username already taken.")
         return value
 
@@ -83,10 +84,28 @@ class RegisterSerializer(serializers.Serializer):
             raise serializers.ValidationError("Email already registered.")
         return value
 
+    def validate(self, attrs):
+        if not attrs.get('username'):
+            email = attrs.get('email', '')
+            base_username = email.split('@')[0] if email else 'user'
+            candidate = base_username
+            idx = 1
+            while User.objects.filter(username=candidate).exists():
+                candidate = f"{base_username}{idx}"
+                idx += 1
+            attrs['username'] = candidate
+        return attrs
+
 
 class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField()
+    username = serializers.CharField(required=False, allow_blank=True)
+    email = serializers.EmailField(required=False, allow_blank=True)
     password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        if not attrs.get('username') and not attrs.get('email'):
+            raise serializers.ValidationError("Please provide either your username or email address.")
+        return attrs
 
 
 # -------------------------------------------------------------
