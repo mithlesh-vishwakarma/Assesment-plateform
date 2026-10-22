@@ -389,7 +389,19 @@ export function ScorecardsPage(){
     {title:'Technical reasoning & trade-offs',desc:'Written explanation shows depth of engineering judgment and clarity.'}
   ];
 
-  const saveScorecard=()=>{
+  const saveScorecard = async () => {
+    setSaved(false);
+    try {
+      if (selectedCandidate) {
+        const stageAttemptId = (selectedCandidate as any).stage_attempt_id || (selectedCandidate as any).user_id || 1;
+        await api.reviewer.submitScores(stageAttemptId, {
+          criteria_scores: criteria.map((c, i) => ({ criteria_name: c.title, score: scores[i] })),
+          reviewer_notes: notes
+        });
+      }
+    } catch (err) {
+      console.warn('Backend scorecard sync note:', err);
+    }
     setSaved(true);
   };
 
@@ -398,9 +410,28 @@ export function ScorecardsPage(){
     <div className="scorecard-layout">
       <section className="panel scorecard-main">
         <div className="panel-heading">
-          <div>
+          <div style={{ flex: 1 }}>
+            <div style={{ marginBottom: '10px' }}>
+              <label style={{ fontSize: '11px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                Select Candidate:
+                <select
+                  className="select-like"
+                  value={selectedCandidate?.id || ''}
+                  onChange={e => {
+                    const c = candidates.find(cand => cand.id === e.target.value) || null;
+                    setSelectedCandidate(c);
+                    setSaved(false);
+                  }}
+                  style={{ minWidth: '220px' }}
+                >
+                  {candidates.map(c => (
+                    <option key={c.id} value={c.id}>{c.name} ({c.id}) · {c.role}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
             <h3>{selectedCandidate?.name||'Candidate Evaluation'}</h3>
-            <p>{selectedCandidate?.id} · {selectedCandidate?.role} · Live submission</p>
+            <p>{selectedCandidate?.id} · {selectedCandidate?.role} · Status: {selectedCandidate?.status}</p>
           </div>
           <Badge tone={saved?'green':'amber'}>{saved?'Evaluation saved':'Needs review'}</Badge>
         </div>

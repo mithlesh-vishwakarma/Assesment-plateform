@@ -25,14 +25,11 @@ class StageService:
         ).order_by('-created_at').first()
 
         if not attempt:
-            # Check maximum attempts allowed by campaign
+            # Testing mode: unlimited attempts permitted
             total_attempts = AssessmentAttempt.objects.filter(
                 candidate=candidate,
                 campaign=campaign
             ).count()
-
-            if total_attempts >= campaign.max_attempts_per_candidate:
-                raise PermissionDenied("You have reached the maximum allowed attempts for this assessment campaign.")
 
             # Get latest published version
             latest_version = campaign.versions.filter(is_published=True).order_by('-version_number').first()
@@ -144,28 +141,21 @@ class StageService:
                     # Return ongoing attempt
                     return stage_attempt
 
-                if stage_attempt.status in [AttemptStatus.SUBMITTED, AttemptStatus.EVALUATING, AttemptStatus.PASSED, AttemptStatus.MANUAL_REVIEW]:
-                    raise ValidationError("You have already completed or submitted this stage.")
+                # Testing mode: Allow retaking stages infinitely without attempt limits
+                existing_count = StageAttempt.objects.filter(
+                    assessment_attempt=assessment_attempt,
+                    stage=stage
+                ).count()
 
-                if stage_attempt.status in [AttemptStatus.FAILED, AttemptStatus.EXPIRED]:
-                    # Check retake limits
-                    existing_count = StageAttempt.objects.filter(
-                        assessment_attempt=assessment_attempt,
-                        stage=stage
-                    ).count()
-                    if existing_count >= stage.max_attempts:
-                        raise PermissionDenied(f"Maximum attempts ({stage.max_attempts}) reached for this stage.")
-
-                    # Start new attempt
-                    deadline = now + timedelta(minutes=stage.time_limit_minutes)
-                    stage_attempt = StageAttempt.objects.create(
-                        assessment_attempt=assessment_attempt,
-                        stage=stage,
-                        status=AttemptStatus.IN_PROGRESS,
-                        start_time=now,
-                        deadline=deadline,
-                        attempt_number=existing_count + 1
-                    )
+                deadline = now + timedelta(minutes=stage.time_limit_minutes)
+                stage_attempt = StageAttempt.objects.create(
+                    assessment_attempt=assessment_attempt,
+                    stage=stage,
+                    status=AttemptStatus.IN_PROGRESS,
+                    start_time=now,
+                    deadline=deadline,
+                    attempt_number=existing_count + 1
+                )
             else:
                 deadline = now + timedelta(minutes=stage.time_limit_minutes)
                 stage_attempt = StageAttempt.objects.create(

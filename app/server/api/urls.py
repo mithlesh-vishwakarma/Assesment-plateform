@@ -6,6 +6,8 @@ from .views import (
     auth_register,
     auth_login,
     auth_logout,
+    auth_password_reset_request,
+    auth_password_reset_confirm,
     auth_me,
     candidate_campaigns,
     candidate_assessment_status,
@@ -54,6 +56,8 @@ urlpatterns = [
     path('auth/register/', auth_register, name='auth-register'),
     path('auth/login/', auth_login, name='auth-login'),
     path('auth/logout/', auth_logout, name='auth-logout'),
+    path('auth/password-reset/request/', auth_password_reset_request, name='auth-password-reset-request'),
+    path('auth/password-reset/confirm/', auth_password_reset_confirm, name='auth-password-reset-confirm'),
     path('auth/me/', auth_me, name='auth-me'),
 
     # Candidate Progression & Attempt Lifecycles

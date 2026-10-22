@@ -81,6 +81,18 @@ export const api = {
                 method: 'POST',
             }),
 
+        passwordResetRequest: (email: string) =>
+            request<{ message: string; reset_token?: string; email?: string }>('/auth/password-reset/request/', {
+                method: 'POST',
+                body: JSON.stringify({ email }),
+            }),
+
+        passwordResetConfirm: (payload: { email: string; token: string; new_password: string }) =>
+            request<{ message: string; token?: string }>('/auth/password-reset/confirm/', {
+                method: 'POST',
+                body: JSON.stringify(payload),
+            }),
+
         me: () => request<any>('/auth/me/'),
     },
 
@@ -89,7 +101,7 @@ export const api = {
         campaigns: () => request<any[]>('/candidate/campaigns/'),
         status: (campaignId: number) => request<any>(`/candidate/status/${campaignId}/`),
         startStage: (stageId: number) =>
-            request<{ stage_attempt_id: number; deadline: string; remaining_seconds: number }>(
+            request<{ stage_attempt_id?: number; id?: number; deadline?: string; remaining_seconds?: number; time_limit_minutes?: number } & Record<string, any>>(
                 `/candidate/stages/${stageId}/start/`,
                 { method: 'POST' }
             ),
@@ -97,16 +109,19 @@ export const api = {
         autosaveDraft: (payload: {
             stage_attempt_id: number
             question_id?: number
+            submission_type?: 'CODE' | 'WRITTEN' | 'MCQ' | string
             code?: string
             language?: string
+            selected_options?: string[]
             written_response?: string
+            written_details?: Record<string, any>
         }) =>
-            request<{ status: string; saved_at: string }>('/candidate/submissions/autosave/', {
+            request<{ status: string; saved_at: string; id?: number } & Record<string, any>>('/candidate/submissions/autosave/', {
                 method: 'POST',
                 body: JSON.stringify(payload),
             }),
         finalizeSubmission: (payload: { stage_attempt_id: number }) =>
-            request<{ status: string; submitted_at: string }>('/candidate/submissions/finalize/', {
+            request<{ status: string; submitted_at: string; score?: number | null } & Record<string, any>>('/candidate/submissions/finalize/', {
                 method: 'POST',
                 body: JSON.stringify(payload),
             }),

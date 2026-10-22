@@ -37,15 +37,17 @@ class SubmissionService:
         return stage_attempt
 
     @classmethod
-    def autosave_draft(cls, candidate, stage_attempt_id, question_id, submission_type, content="", selected_options=None, language="", written_details=None, request=None):
+    def autosave_draft(cls, candidate, stage_attempt_id=None, question_id=None, submission_type="CODE", content="", selected_options=None, language="", written_details=None, request=None, stage_attempt=None, question=None):
         """
-        Saves candidate draft answer without finalizing the stage attempt.
-        Maintains version snapshots and payload limits.
+        Saves candidate draft answer efficiently without finalizing the stage attempt.
+        Updates the draft in-place without generating excessive version/audit spam.
         """
-        stage_attempt = cls.validate_candidate_access(candidate, stage_attempt_id)
-        question = Question.objects.filter(id=question_id).first()
+        if not stage_attempt:
+            stage_attempt = cls.validate_candidate_access(candidate, stage_attempt_id)
         if not question:
-            raise ValidationError("Question not found.")
+            question = Question.objects.filter(id=question_id).first()
+            if not question:
+                raise ValidationError("Question not found.")
 
         # Payload size validation (max 500KB)
         total_payload_bytes = len((content or '').encode('utf-8'))
@@ -75,17 +77,7 @@ class SubmissionService:
                 submission.language = language
                 submission.is_draft = True
                 submission.version_number += 1
-                submission.save()
-
-            # Record SubmissionVersion snapshot
-            SubmissionVersion.objects.create(
-                submission=submission,
-                version_number=submission.version_number,
-                content=content,
-                language=language,
-                selected_options=selected_options,
-                is_final=False,
-            )
+                submission.save(update_fields=['content', 'selected_options', 'language', 'is_draft', 'version_number', 'updated_at'])
 
             # Update or create WrittenResponse if details provided
             if written_details or submission_type == 'WRITTEN':
@@ -100,17 +92,6 @@ class SubmissionService:
                         'incident_mitigation': written_details.get('incident_mitigation', ''),
                     }
                 )
-
-            # Audit logging
-            ip_addr = request.META.get('REMOTE_ADDR') if request else None
-            AuditLog.objects.create(
-                actor=candidate,
-                action='DRAFT_AUTOSAVED',
-                target_model='Submission',
-                target_id=str(submission.id),
-                ip_address=ip_addr,
-                details={'question_id': question.id, 'version': submission.version_number}
-            )
 
             return submission
 

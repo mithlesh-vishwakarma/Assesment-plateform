@@ -155,10 +155,22 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
 # CORS settings for frontend integration
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+]
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^http://(localhost|127\.0\.0\.1)(:\d+)?$",
+]
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
 ]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

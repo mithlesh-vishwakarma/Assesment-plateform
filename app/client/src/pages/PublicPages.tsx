@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { ArrowRight, ArrowUpRight, Braces, Check, ChevronRight, Code2, GitBranch, LockKeyhole, ShieldCheck, Sparkles, Terminal, Trophy, Zap } from 'lucide-react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { ArrowRight, ArrowUpRight, Braces, Check, ChevronRight, Code2, GitBranch, KeyRound, LockKeyhole, ShieldCheck, Sparkles, Terminal, Trophy, Zap } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -46,10 +46,258 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
         saveAndProceed(res.user, res.token);
       }
     } catch (err: any) {
-      console.warn('API authentication note:', err.message);
-      setError(err.message || 'Authentication failed. Ensure Django backend is running or continue with demo.');
+      console.warn('API authentication error:', err.message);
+      setError(err.message || 'Authentication failed. Please check your credentials.');
     }
   };
 
-  return <div className="auth-page"><div className="auth-art"><div className="auth-art-grid" /><Brand /><div className="auth-art-content"><Badge tone="purple"><Sparkles size={12} /> ENGINEERING, EVALUATED</Badge><h1>Great engineering<br />starts with <span>curiosity.</span></h1><p>Show your process, not just your answer. A thoughtful way to demonstrate your engineering skills.</p><div className="auth-perks"><div><Check size={15} /> Clear assessment stages</div><div><Check size={15} /> Real coding workspace</div><div><Check size={15} /> Structured, fair review</div></div></div><div className="auth-art-bottom">AMERIGAM <span>·</span> ENGINEERING CHALLENGE</div></div><div className="auth-form-side"><div className="auth-mobile-brand"><Brand /></div><div className="auth-form-wrap"><Link className="back-home" to="/"><ChevronRight size={15} className="back-chevron" /> Back to home</Link><div className="eyebrow">{mode === 'login' ? 'WELCOME BACK' : 'GET STARTED'}</div><h2>{mode === 'login' ? 'Sign in to your workspace' : 'Create your account'}</h2><p className="auth-subtitle">{mode === 'login' ? 'Continue where you left off.' : 'Start your engineering assessment journey.'}</p><form onSubmit={handleSubmit(onSubmit)} className="auth-form">{mode === 'register' && <label>Full name<input {...register('name')} placeholder="e.g. Harshani Patil" />{errors.name && <small className="field-error">{errors.name.message}</small>}</label>}<label>Email address<input {...register('email')} type="email" placeholder="you@example.com" autoComplete="email" />{errors.email && <small className="field-error">{errors.email.message}</small>}</label><label>Password<div className="password-wrap"><input {...register('password')} type={showPassword ? 'text' : 'password'} placeholder="At least 8 characters" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} /><button type="button" onClick={() => setShowPassword(!showPassword)}>{showPassword ? 'Hide' : 'Show'}</button></div>{errors.password && <small className="field-error">{errors.password.message}</small>}</label>{mode === 'login' && <div className="forgot-row"><span>Use your registered account</span><a href="mailto:support@amerigam.example">Need help?</a></div>}{error && <div className="form-notice">{error}<button type="button" onClick={() => { localStorage.setItem('aec-session', JSON.stringify({ name: 'Candidate Demo', email: 'candidate@example.com', role: 'candidate', mode: 'demo' })); localStorage.setItem('aec-active-role', 'candidate'); navigate('/candidate'); }}>Explore demo workspace</button></div>}<Button type="submit" className="auth-submit" disabled={isSubmitting}>{isSubmitting ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Create account'} <ArrowRight size={16} /></Button></form><div className="auth-switch">{mode === 'login' ? 'New to Amerigam?' : 'Already have an account?'} <Link to={mode === 'login' ? '/register' : '/login'}>{mode === 'login' ? 'Create an account' : 'Sign in'}</Link></div><div className="auth-legal"><LockKeyhole size={13} /> Your information is handled securely. <Link to="/rules">Assessment rules</Link></div><div className="demo-shortcut"><span>Just exploring?</span><button onClick={() => { localStorage.setItem('aec-session', JSON.stringify({ name: 'Candidate Demo', email: 'candidate@example.com', role: 'candidate', mode: 'demo' })); localStorage.setItem('aec-active-role', 'candidate'); navigate('/candidate'); }}>Open candidate demo <ArrowUpRight size={14} /></button><button onClick={() => { localStorage.setItem('aec-session', JSON.stringify({ name: 'Admin Demo', email: 'admin@example.com', role: 'admin', mode: 'demo' })); localStorage.setItem('aec-active-role', 'admin'); navigate('/admin'); }}>Admin demo</button></div></div></div></div> }
+  return <div className="auth-page"><div className="auth-art"><div className="auth-art-grid" /><Brand /><div className="auth-art-content"><Badge tone="purple"><Sparkles size={12} /> ENGINEERING, EVALUATED</Badge><h1>Great engineering<br />starts with <span>curiosity.</span></h1><p>Show your process, not just your answer. A thoughtful way to demonstrate your engineering skills.</p><div className="auth-perks"><div><Check size={15} /> Clear assessment stages</div><div><Check size={15} /> Real coding workspace</div><div><Check size={15} /> Structured, fair review</div></div></div><div className="auth-art-bottom">AMERIGAM <span>·</span> ENGINEERING CHALLENGE</div></div><div className="auth-form-side"><div className="auth-mobile-brand"><Brand /></div><div className="auth-form-wrap"><Link className="back-home" to="/"><ChevronRight size={15} className="back-chevron" /> Back to home</Link><div className="eyebrow">{mode === 'login' ? 'WELCOME BACK' : 'GET STARTED'}</div><h2>{mode === 'login' ? 'Sign in to your workspace' : 'Create your account'}</h2><p className="auth-subtitle">{mode === 'login' ? 'Continue where you left off.' : 'Start your engineering assessment journey.'}</p><form onSubmit={handleSubmit(onSubmit)} className="auth-form">{mode === 'register' && <label>Full name<input {...register('name')} placeholder="e.g. Mithlesh Vishwakarma" />{errors.name && <small className="field-error">{errors.name.message}</small>}</label>}<label>Email address<input {...register('email')} type="email" placeholder="you@example.com" autoComplete="email" />{errors.email && <small className="field-error">{errors.email.message}</small>}</label><label>Password<div className="password-wrap"><input {...register('password')} type={showPassword ? 'text' : 'password'} placeholder="At least 8 characters" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} /><button type="button" onClick={() => setShowPassword(!showPassword)}>{showPassword ? 'Hide' : 'Show'}</button></div>{errors.password && <small className="field-error">{errors.password.message}</small>}</label>{mode === 'login' && <div className="forgot-row"><Link to="/forgot-password" style={{ color: '#b9a6ff' }}>Forgot password?</Link><a href="mailto:support@amerigam.com">Need help?</a></div>}{error && <div className="form-notice">{error}</div>}<Button type="submit" className="auth-submit" disabled={isSubmitting}>{isSubmitting ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Create account'} <ArrowRight size={16} /></Button></form><div className="auth-switch">{mode === 'login' ? 'New to Amerigam?' : 'Already have an account?'} <Link to={mode === 'login' ? '/register' : '/login'}>{mode === 'login' ? 'Create an account' : 'Sign in'}</Link></div><div className="auth-legal"><LockKeyhole size={13} /> Your information is handled securely. <Link to="/rules">Assessment rules</Link></div></div></div></div> }
 export function RulesPage() { const navigate = useNavigate(); const [accepted, setAccepted] = useState(false); return <div className="rules-page"><header className="landing-nav"><Brand /><Link to="/candidate" className="nav-login">Exit to dashboard</Link></header><main className="rules-content"><div className="eyebrow">BEFORE YOU BEGIN</div><h1>Assessment rules & consent</h1><p className="rules-intro">A few important details to help you have a fair, focused assessment experience.</p><div className="rule-list">{[{ n: '01', title: 'Work independently', text: 'Submit your own work. You may use only the resources allowed in the assessment instructions.' }, { n: '02', title: 'Manage your time', text: 'Each timed stage has a server-controlled deadline. Your progress and remaining time are confirmed by the platform.' }, { n: '03', title: 'Explain your reasoning', text: 'Some tasks ask you to describe trade-offs, complexity, assumptions, or what you would improve.' }, { n: '04', title: 'Respect the environment', text: 'The platform may record technical integrity signals, such as focus changes, for reviewer context. No single event automatically proves misconduct.' }, { n: '05', title: 'Know your screen requirements', text: 'Coding challenges are designed for desktop or laptop screens. Before starting a timed coding stage, use a supported desktop-sized viewport and a stable connection.' }].map(r => <article className="rule-card" key={r.n}><span>{r.n}</span><div><h3>{r.title}</h3><p>{r.text}</p></div></article>)}</div><label className="consent-check"><input type="checkbox" checked={accepted} onChange={e => setAccepted(e.target.checked)} /><span>I have read and understood the assessment rules and agree to proceed.</span></label><Button disabled={!accepted} onClick={() => navigate('/candidate')}>I agree and continue <ArrowRight size={16} /></Button><p className="rules-note">This demo consent is local UI state. Production consent must be recorded by the backend.</p></main></div> }
+
+export function ForgotPasswordPage() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialEmail = searchParams.get('email') || '';
+  const initialToken = searchParams.get('token') || '';
+
+  const [step, setStep] = useState<'request' | 'confirm' | 'success'>(
+    initialToken ? 'confirm' : 'request'
+  );
+  const [email, setEmail] = useState(initialEmail);
+  const [token, setToken] = useState(initialToken);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [infoMessage, setInfoMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleRequestToken = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setInfoMessage('');
+    if (!email || !email.includes('@')) {
+      setError('Please provide a valid email address.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await api.auth.passwordResetRequest(email.trim());
+      if (res.reset_token) {
+        setToken(res.reset_token);
+        setInfoMessage('Reset token generated successfully! Enter your new password below.');
+      } else {
+        setInfoMessage(res.message || 'If an account exists for this email, reset instructions were generated.');
+      }
+      setStep('confirm');
+    } catch (err: any) {
+      setError(err.message || 'Failed to request password reset.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleConfirmReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!token.trim()) {
+      setError('Password reset token is required.');
+      return;
+    }
+    if (newPassword.length < 8) {
+      setError('Password must be at least 8 characters long.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await api.auth.passwordResetConfirm({
+        email: email.trim(),
+        token: token.trim(),
+        new_password: newPassword,
+      });
+      if (res.token) {
+        setAuthToken(res.token);
+      }
+      setStep('success');
+    } catch (err: any) {
+      setError(err.message || 'Password reset failed. Token may be invalid or expired.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="auth-page">
+      <div className="auth-art">
+        <div className="auth-art-grid" />
+        <Brand />
+        <div className="auth-art-content">
+          <Badge tone="purple"><KeyRound size={12} /> ACCOUNT SECURITY</Badge>
+          <h1>Secure recovery for your <span>workspace.</span></h1>
+          <p>Reset your credentials safely using cryptographically verified single-use tokens.</p>
+          <div className="auth-perks">
+            <div><Check size={15} /> Instant cryptographic reset tokens</div>
+            <div><Check size={15} /> Direct password encryption & update</div>
+            <div><Check size={15} /> Works for Candidate, Reviewer & Admin accounts</div>
+          </div>
+        </div>
+        <div className="auth-art-bottom">AMERIGAM <span>·</span> SECURITY PROTOCOL</div>
+      </div>
+
+      <div className="auth-form-side">
+        <div className="auth-mobile-brand"><Brand /></div>
+        <div className="auth-form-wrap">
+          <Link className="back-home" to="/login">
+            <ChevronRight size={15} className="back-chevron" /> Back to sign in
+          </Link>
+
+          {step === 'request' && (
+            <>
+              <div className="eyebrow">PASSWORD RECOVERY</div>
+              <h2>Reset your password</h2>
+              <p className="auth-subtitle">Enter your account email to receive your password reset token.</p>
+
+              <form onSubmit={handleRequestToken} className="auth-form">
+                <label>
+                  Account email address
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@amerigam.com"
+                    autoComplete="email"
+                    required
+                  />
+                </label>
+
+                {error && (
+                  <div className="form-notice" style={{ borderColor: '#783044', background: '#301c22', color: '#ff9aa8' }}>
+                    {error}
+                  </div>
+                )}
+
+                <Button type="submit" className="auth-submit" disabled={isSubmitting}>
+                  {isSubmitting ? 'Requesting token…' : 'Generate reset token'} <ArrowRight size={16} />
+                </Button>
+              </form>
+
+              <div className="auth-switch">
+                Remember your password? <Link to="/login">Sign in</Link>
+              </div>
+            </>
+          )}
+
+          {step === 'confirm' && (
+            <>
+              <div className="eyebrow">STEP 2 OF 2</div>
+              <h2>Set new password</h2>
+              <p className="auth-subtitle">
+                Enter your reset token and new password for <strong>{email}</strong>
+              </p>
+
+              {infoMessage && (
+                <div className="form-notice" style={{ borderColor: '#2b5042', background: '#132c25', color: '#7ce2a5', marginBottom: 16 }}>
+                  {infoMessage}
+                </div>
+              )}
+
+              <form onSubmit={handleConfirmReset} className="auth-form">
+                <label>
+                  Reset token
+                  <input
+                    type="text"
+                    value={token}
+                    onChange={(e) => setToken(e.target.value)}
+                    placeholder="Enter or paste reset token"
+                    required
+                  />
+                </label>
+
+                <label>
+                  New password
+                  <div className="password-wrap">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="At least 8 characters"
+                      autoComplete="new-password"
+                      required
+                    />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)}>
+                      {showPassword ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+                </label>
+
+                <label>
+                  Confirm new password
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Repeat new password"
+                    autoComplete="new-password"
+                    required
+                  />
+                </label>
+
+                {error && (
+                  <div className="form-notice" style={{ borderColor: '#783044', background: '#301c22', color: '#ff9aa8' }}>
+                    {error}
+                  </div>
+                )}
+
+                <Button type="submit" className="auth-submit" disabled={isSubmitting}>
+                  {isSubmitting ? 'Updating password…' : 'Update password'} <ArrowRight size={16} />
+                </Button>
+              </form>
+
+              <div className="auth-switch">
+                Need to change email?{' '}
+                <button
+                  type="button"
+                  onClick={() => { setStep('request'); setError(''); }}
+                  style={{ background: 'none', border: 0, color: '#c1a7ff', cursor: 'pointer', fontWeight: 600, padding: 0 }}
+                >
+                  Try another email
+                </button>
+              </div>
+            </>
+          )}
+
+          {step === 'success' && (
+            <>
+              <div className="eyebrow" style={{ color: '#7ce2a5' }}>SUCCESS</div>
+              <h2>Password updated!</h2>
+              <p className="auth-subtitle">Your password has been securely updated. You can now log in to your account with your new credentials.</p>
+
+              <div className="panel" style={{ background: '#12251e', borderColor: '#24523d', textAlign: 'center', padding: '24px 20px', marginBottom: 20 }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 48, height: 48, borderRadius: '50%', background: '#1c4232', color: '#6fe0a0', marginBottom: 12 }}>
+                  <Check size={24} />
+                </div>
+                <h3 style={{ color: '#e8eaf3', marginBottom: 6 }}>Ready to sign in</h3>
+                <p style={{ fontSize: 11, color: '#97d2b4', margin: 0 }}>All prior sessions have been invalidated for security.</p>
+              </div>
+
+              <Button onClick={() => navigate('/login')} className="auth-submit">
+                Continue to sign in <ArrowRight size={16} />
+              </Button>
+            </>
+          )}
+
+          <div className="auth-legal">
+            <LockKeyhole size={13} /> Secure recovery powered by Django cryptographic token generator.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
